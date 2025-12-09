@@ -27,20 +27,15 @@ class HomeFragment : Fragment() {
         NoteViewModelFactory((requireActivity().application as NoteApplication).repository)
     }
 
-    // Dùng nullable để an toàn tuyệt đối
     private var noteAdapter: NoteAdapter? = null
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         setupMenu()
         setupRecyclerView()
         setupObservers()
@@ -66,6 +61,11 @@ class HomeFragment : Fragment() {
                         findNavController().navigate(HomeFragmentDirections.actionHomeFragmentToUserProfileFragment())
                         true
                     }
+                    // ĐÃ KÍCH HOẠT: Bấm vào icon thùng rác -> Chuyển sang TrashFragment
+                    R.id.menu_trash -> {
+                        findNavController().navigate(HomeFragmentDirections.actionHomeFragmentToTrashFragment())
+                        true
+                    }
                     else -> false
                 }
             }
@@ -79,8 +79,9 @@ class HomeFragment : Fragment() {
                 findNavController().navigate(action)
             },
             onDeleteClick = { note ->
-                viewModel.deleteNote(note)
-                Toast.makeText(context, "Đã xóa ghi chú", Toast.LENGTH_SHORT).show()
+                // Gọi moveToTrash thay vì xóa luôn
+                viewModel.moveToTrash(note)
+                Toast.makeText(context, "Đã chuyển vào Thùng rác", Toast.LENGTH_SHORT).show()
             }
         )
         binding.recyclerView.apply {

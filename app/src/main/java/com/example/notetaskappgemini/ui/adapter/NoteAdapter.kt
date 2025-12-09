@@ -1,6 +1,8 @@
 package com.example.notetaskappgemini.ui.adapter
 
+import android.text.Html
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -12,46 +14,53 @@ import java.util.Date
 import java.util.Locale
 
 class NoteAdapter(
-    private val onItemClick: (NoteTask) -> Unit,    // Sự kiện click vào item để sửa
-    private val onDeleteClick: (NoteTask) -> Unit   // Sự kiện click nút xóa
+    private val onItemClick: (NoteTask) -> Unit,
+    private val onDeleteClick: (NoteTask) -> Unit
 ) : ListAdapter<NoteTask, NoteAdapter.NoteViewHolder>(DiffCallback()) {
 
-    // Tạo ViewHolder
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NoteViewHolder {
         val binding = ItemNoteBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return NoteViewHolder(binding)
     }
 
-    // Gán dữ liệu vào ViewHolder
     override fun onBindViewHolder(holder: NoteViewHolder, position: Int) {
         val currentItem = getItem(position)
         holder.bind(currentItem)
     }
 
-    // Class ViewHolder: Nắm giữ view của 1 dòng
     inner class NoteViewHolder(private val binding: ItemNoteBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(note: NoteTask) {
-            binding.apply {
-                tvTitle.text = note.title
-                tvContent.text = note.content
+            binding.tvTitle.text = note.title
 
-                // Format ngày tháng từ Long sang String đẹp mắt
-                val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                tvDate.text = dateFormat.format(Date(note.date))
+            // --- ĐÃ SỬA: Chuyển mã HTML thành văn bản hiển thị được ---
+            // Nếu không có dòng này, bạn sẽ thấy các thẻ <font>, <br> hiện ra màn hình
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                binding.tvContent.text = Html.fromHtml(note.content, Html.FROM_HTML_MODE_COMPACT)
+            } else {
+                @Suppress("DEPRECATION")
+                binding.tvContent.text = Html.fromHtml(note.content)
+            }
+            // ---------------------------------------------------------
 
-                // Bắt sự kiện click
-                root.setOnClickListener { onItemClick(note) }
-                btnDelete.setOnClickListener { onDeleteClick(note) }
+            // Format ngày tháng từ Long sang String
+            val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+            binding.tvDate.text = dateFormat.format(Date(note.date))
+
+            // Hiển thị icon Ghim nếu isPinned = true
+            binding.ivPinIcon.visibility = if (note.isPinned) View.VISIBLE else View.GONE
+
+            binding.root.setOnClickListener {
+                onItemClick(note)
+            }
+
+            binding.btnDelete.setOnClickListener {
+                onDeleteClick(note)
             }
         }
     }
 
-    // Class DiffCallback: So sánh dữ liệu cũ và mới để cập nhật thông minh
     class DiffCallback : DiffUtil.ItemCallback<NoteTask>() {
-        override fun areItemsTheSame(oldItem: NoteTask, newItem: NoteTask) =
-            oldItem.id == newItem.id
-
-        override fun areContentsTheSame(oldItem: NoteTask, newItem: NoteTask) =
-            oldItem == newItem
+        override fun areItemsTheSame(oldItem: NoteTask, newItem: NoteTask) = oldItem.id == newItem.id
+        override fun areContentsTheSame(oldItem: NoteTask, newItem: NoteTask) = oldItem == newItem
     }
 }

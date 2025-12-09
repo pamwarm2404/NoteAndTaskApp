@@ -1,5 +1,7 @@
 package com.example.notetaskappgemini.ui
 
+import android.app.AlertDialog
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -39,98 +41,104 @@ class DetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 1. Cài đặt Spinner (Thêm "Uncategorized" mặc định)
+        // 1. Cài đặt Editor
+        setupRichEditor()
+
+        // 2. Cài đặt Spinner Category
         setupCategorySpinner()
 
-        // 2. Kiểm tra nếu là Sửa Ghi chú cũ
+        // 3. Load dữ liệu cũ (nếu có)
         if (args.noteId != -1) {
             viewModel.getNoteById(args.noteId).observe(viewLifecycleOwner) { note ->
                 note?.let {
                     currentNote = it
                     binding.etTitle.setText(it.title)
-                    binding.etContent.setText(it.content)
-                    // Lưu ý: Việc setSelection cho spinner sẽ được xử lý bên trong hàm setupCategorySpinner
-                    // khi danh sách category tải xong.
+                    binding.cbPin.isChecked = it.isPinned
+
+                    // QUAN TRỌNG: Load nội dung HTML vào Editor
+                    binding.editor.html = it.content
                 }
             }
         }
 
-        // 3. Sự kiện bấm nút Lưu
         binding.fabSave.setOnClickListener {
             saveNote()
         }
     }
 
+    private fun setupRichEditor() {
+        binding.editor.setPlaceholder("Type something here...")
+        binding.editor.setPadding(10, 10, 10, 10)
+        binding.editor.setEditorFontSize(18)
+
+        // Sự kiện các nút công cụ
+        binding.actionBold.setOnClickListener { binding.editor.setBold() }
+        binding.actionItalic.setOnClickListener { binding.editor.setItalic() }
+
+        // Chọn màu chữ
+        binding.actionColor.setOnClickListener {
+            showColorPickerDialog { color -> binding.editor.setTextColor(color) }
+        }
+
+        // Chọn màu Highlight (Nền chữ)
+        binding.actionHighlight.setOnClickListener {
+            showColorPickerDialog { color -> binding.editor.setTextBackgroundColor(color) }
+        }
+    }
+
+    // Hàm hiển thị hộp thoại chọn màu đơn giản
+    private fun showColorPickerDialog(onColorSelected: (Int) -> Unit) {
+        val colors = arrayOf("Black", "Red", "Blue", "Green", "Yellow", "Cyan")
+        val colorValues = intArrayOf(Color.BLACK, Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW, Color.CYAN)
+
+        AlertDialog.Builder(context)
+            .setTitle("Choose Color")
+            .setItems(colors) { _, which ->
+                onColorSelected(colorValues[which])
+            }
+            .show()
+    }
+
     private fun setupCategorySpinner() {
         viewModel.allCategories.observe(viewLifecycleOwner) { categories ->
-            // Tạo danh sách tên Category
             val categoryNames = mutableListOf<String>()
-
-            // LUÔN LUÔN thêm "Uncategorized" vào đầu tiên
             categoryNames.add("Uncategorized")
-
-            // Sau đó mới thêm các danh mục từ Database
             categoryNames.addAll(categories.map { it.name })
 
-            val adapter = ArrayAdapter(
-                requireContext(),
-                android.R.layout.simple_spinner_item,
-                categoryNames
-            )
+            val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, categoryNames)
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             binding.spinnerCategory.adapter = adapter
 
-            // Logic chọn lại đúng Category cũ (nếu đang sửa)
             if (currentNote != null) {
                 val position = categoryNames.indexOf(currentNote!!.type)
-                if (position >= 0) {
-                    binding.spinnerCategory.setSelection(position)
-                } else {
-                    // Nếu không tìm thấy (hoặc là note cũ chưa có category), chọn mặc định là 0 (Uncategorized)
-                    binding.spinnerCategory.setSelection(0)
-                }
+                binding.spinnerCategory.setSelection(if (position >= 0) position else 0)
             }
         }
     }
 
     private fun saveNote() {
         val title = binding.etTitle.text.toString().trim()
-        val content = binding.etContent.text.toString().trim()
 
-        // Lấy giá trị từ Spinner, nếu lỗi thì mặc định là "Uncategorized"
+        // QUAN TRỌNG: Lấy nội dung HTML từ Editor
+        val content = binding.editor.html ?: ""
+
         val selectedCategory = binding.spinnerCategory.selectedItem?.toString() ?: "Uncategorized"
+        val isPinned = binding.cbPin.isChecked
 
         if (title.isEmpty()) {
             Toast.makeText(context, "Please enter a title", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Sử dụng thời gian thực hệ thống (kiểu Long) để khớp với Database
         val currentDate = System.currentTimeMillis()
 
         if (currentNote == null) {
-            // Thêm mới
-            val newNote = NoteTask(
-                id = 0,
-                title = title,
-                content = content,
-                date = currentDate,
-                type = selectedCategory // Lưu loại vào
-            )
+            val newNote = NoteTask(0, title, content, currentDate, selectedCategory, isPinned, false)
             viewModel.insertNote(newNote)
-            Toast.makeText(context, "Note Saved!", Toast.LENGTH_SHORT).show()
         } else {
-            // Cập nhật
-            val updateNote = currentNote!!.copy(
-                title = title,
-                content = content,
-                date = currentDate,
-                type = selectedCategory // Cập nhật loại mới
-            )
+            val updateNote = currentNote!!.copy(title = title, content = content, date = currentDate, type = selectedCategory, isPinned = isPinned)
             viewModel.updateNote(updateNote)
-            Toast.makeText(context, "Note Updated!", Toast.LENGTH_SHORT).show()
         }
-
         findNavController().navigateUp()
     }
 

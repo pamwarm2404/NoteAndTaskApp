@@ -3,20 +3,23 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/menu_settings"
-        android:icon="@android:drawable/ic_menu_manage"
-        android:title="Settings"
-        app:showAsAction="never" />
+        android:id="@+id/menu_trash"
+        android:icon="@android:drawable/ic_menu_delete"
+        android:title="Trash Bin"
+        app:showAsAction="ifRoom" />
 
     <item
         android:id="@+id/menu_categories"
-        android:icon="@android:drawable/ic_menu_more"
         android:title="Categories"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_profile"
-        android:icon="@android:drawable/ic_menu_myplaces"
-        android:title="Profile"
+        android:title="User Profile"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_settings"
+        android:title="Settings"
         app:showAsAction="never" />
 </menu>
